@@ -1,6 +1,7 @@
 # %% ===== Imports =====
 import EVA_constantParam as cpm
 import numpy as np
+from scipy.io import savemat 
 
 # matrix
 # Create dynamics in compact form
@@ -93,10 +94,11 @@ def power_dispatch_plp(t_cur):
         'bt': bt,
         'c': c,
     }
-    # savemat(f'./crs/plp_{t_cur}.mat', plp)
+    savemat(f'../output/crs/plp_{t_cur}.mat', plp)
     # critical_region_affine(A, b, Aeq, beq, c, F, param_range)
     return plp
 
 
 power_dispatch_plp(10)
+print('ok!')
     
