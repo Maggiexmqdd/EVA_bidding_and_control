@@ -16,9 +16,9 @@ import numpy as np
 import pandas as pd
 from data_process import *
 # Game parameters 
-N = 80       # No. of agents
+N = 100  # No. of agents
 T = 24      
-H = 6       # prediction horizon
+H = 4 # prediction horizon
 eta_c, eta_d = 0.9, 0.93  
 #  %%==== electricity_market_data ====
 df_energy_data = pd.read_csv('../input/rt_hrl_lmps.csv', sep=',')
@@ -39,6 +39,6 @@ pr_fre = (c_rcap + c_rper) / 1000  # Normalize to $/kWh
 charging_fee=compute_charging_fee()
 price_plot(pr_e_rt , pr_fre , charging_fee,1)
 # %% EV data
-np.random.seed(66)
-ev_params = generate_ev_data(N, k_value=1,charging_fee=charging_fee, k_v=1)  #1是有不同preference
+# np.random.seed(66)
+# ev_params = generate_ev_data(N, k_value=1,charging_fee=charging_fee, k_v=1)  #1是有不同preference
 # np.savez("../output/ev_params.npz", **ev_params)

@@ -133,7 +133,7 @@ import numpy as np
 import math
 from scipy.stats import truncnorm
 
-def generate_ev_data(N, k_value, charging_fee, k_v=120, mode=1):
+def generate_ev_data(N, k_mode, k_v, charging_fee, mode=1):
     """
     Generate synthetic EV data based on the input parameters.
 
@@ -152,19 +152,15 @@ def generate_ev_data(N, k_value, charging_fee, k_v=120, mode=1):
 
     # Initialize parameters
     p_max = np.full(N, 10.0)  # maximal charging rate (kW)
-    t_arr = np.zeros(N, dtype=int)  # arrival time
-    t_dep = np.zeros(N, dtype=int)  # departure time
-    soc_arr = np.zeros(N)  # arrival SOC
-    soc_dep = np.zeros(N)  # departure SOC
+    t_arr,t_dep = np.zeros(N, dtype=int), np.zeros(N, dtype=int)  # arrival and departure time 
+    soc_arr,soc_dep = np.zeros(N),np.zeros(N)  # arrival SOC/departure SOC
     B = np.random.uniform(45, 50, size=N).round(2)  # battery capacity (kWh)
-    eff_ch = np.full(N, 0.9)  # charging efficiency
-    eff_dis = np.full(N, 0.93)  # discharging efficiency
+    eff_ch,eff_dis = np.full(N, 0.9),np.full(N, 0.93)  # charging/discharging efficiency 
     E_req = np.zeros(N)  # energy required (kWh)
-    k = np.zeros((N, 24))  # preference matrix
     e = np.ones(N) * 10
 
     # Generate k values based on charging fee
-    generate_preference_matrix(k, N, k_value, charging_fee)
+    k=generate_preference_matrix(N,k_mode,k_v,charging_fee)
 
     # Generate EV arrival, departure times, and SOC
     generate_ev_times(t_arr, t_dep, soc_arr, soc_dep, N, mode)
@@ -190,15 +186,20 @@ def generate_ev_data(N, k_value, charging_fee, k_v=120, mode=1):
         "e": e
     }
 
-def generate_preference_matrix(k, N, k_value, charging_fee):
+def generate_preference_matrix(N, k_different,k_v,charging_fee):
     """
     Populate the preference matrix k based on k_value and charging_fee.
     """
-    if k_value == 1:
-        k[:N // 4, :] = 0.3 * 30 / charging_fee
-        k[N // 4:2 * N // 4, :] = 20 / charging_fee
-        k[2 * N // 4:3 * N // 4, :] = 1 * 30 / charging_fee
-        k[3 * N // 4:, :] = 1.5 * 30 / charging_fee
+    k = np.zeros((N, 24))  # preference matrix
+    max_=30
+    if k_different == 1:
+        k[:N // 4, :] = 0.25 * max_ / charging_fee
+        k[N // 4:2 * N // 4, :] = 0.5 * max_ / charging_fee
+        k[2 * N // 4:3 * N // 4, :] = 0.75 * max_ / charging_fee
+        k[3 * N // 4:, :] = 1 * max_ / charging_fee
+    elif k_different == 0:
+        k[:,:]=k_v
+    return k
 
 def generate_ev_times(t_arr, t_dep, soc_arr, soc_dep, N, mode):
     """

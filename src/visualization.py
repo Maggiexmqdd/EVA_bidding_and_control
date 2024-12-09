@@ -43,17 +43,17 @@ def flexibility_plot(mode=0):
 
     # Create plots for each group
     for i in range(4):  # Assuming we divide the data into 4 groups
-        plt.figure(figsize=(5, 3.5))  # Create a new figure
+        plt.figure(figsize=(4, 3))  # Create a new figure
         
         # Plot degradation, upward regulation, and downward regulation
-        plt.bar(index, np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0), bar_width, color=dev_color, alpha=0.8, label='Degradation')
-        plt.bar(index, np.mean(du_trajectory[i * (du_trajectory.shape[0] // 4):(i + 1) * (du_trajectory.shape[0] // 4), :], axis=0), bar_width, bottom=np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0), color=mil_color, alpha=0.8, label='Upward Regulation')
-        plt.bar(index, np.mean(dd_trajectory[i * (dd_trajectory.shape[0] // 4):(i + 1) * (dd_trajectory.shape[0] // 4), :], axis=0), bar_width, bottom=np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0) + np.mean(du_trajectory[i * (du_trajectory.shape[0] // 4):(i + 1) * (du_trajectory.shape[0] // 4), :], axis=0), color=flex_color, alpha=0.8, label='Downward Regulation')
+        plt.bar(index, np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0), bar_width, color=dev_color, alpha=0.8, label=r'$p^{dis}$')
+        plt.bar(index, np.mean(du_trajectory[i * (du_trajectory.shape[0] // 4):(i + 1) * (du_trajectory.shape[0] // 4), :], axis=0), bar_width, bottom=np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0), color=mil_color, alpha=0.8, label=r'$\Delta p^{up}$')
+        plt.bar(index, np.mean(dd_trajectory[i * (dd_trajectory.shape[0] // 4):(i + 1) * (dd_trajectory.shape[0] // 4), :], axis=0), bar_width, bottom=np.mean(deg_trajectory[i * (deg_trajectory.shape[0] // 4):(i + 1) * (deg_trajectory.shape[0] // 4), :], axis=0) + np.mean(du_trajectory[i * (du_trajectory.shape[0] // 4):(i + 1) * (du_trajectory.shape[0] // 4), :], axis=0), color=flex_color, alpha=0.8, label=r'$\Delta p^{dn}$')
         
         ax = plt.gca()
         plt.xlabel('Time period (1h)')
         plt.ylabel('Flexibility Contribution (kWh)')
-
+        plt.xlim(0, cpm.T+0.5)
         # Set x-axis labels to show time in hours
         new_labels = list(range(12, 24, 4)) + list(range(0, 12+1, 4))  # Hourly labels with 4-hour interval
         formatted_labels = [f"{hour}:00" for hour in new_labels]  # Format as HH:00
@@ -73,7 +73,7 @@ def flexibility_plot(mode=0):
 flexibility_plot(1)
 
 # %% 2 bidding
-def bidding_res_plot(mode=0):
+def bidding_res_plot(mode=0,k=200):
     """
     Plot the bidding results with energy bids and regulation bids (upward and downward).
 
@@ -81,9 +81,19 @@ def bidding_res_plot(mode=0):
         mode (int): If 1, saves the figure as a PDF. Default is 0 (no saving).
     """
     # Load pre-saved trajectories
-    data = np.load("../output/bidding_trajectories.npz")
+    if k==1:
+        loc=f"../output/bidding_trajectories.npz"
+    else:
+        loc=f"../output/bidding_trajectories_k_{k}.npz"
+    data = np.load(loc)
     P_bid_trajectory = data['P_bid_trajectory']
     R_bid_trajectory = data['R_bid_trajectory']
+    data2 = np.load("../output/output_trajectories.npz")
+    deg = data2['deg_trajectory']
+    du = data2['du_trajectory']
+    dd = data2['dd_trajectory']
+    data3 = np.load("../output/output_trajectories.npz")
+    la = data3['la_trajectory']
     # dd_trajectory = data['dd_trajectory']
 
     T = len(P_bid_trajectory)  # Number of time steps
@@ -97,20 +107,20 @@ def bidding_res_plot(mode=0):
     
 
     # Plot downward regulation (P_bid + R_bid) with fill_between
-    plt.fill_between(range(T), P_bid, P_bid + R_bid, color='#397FC7', alpha=0.2, label='Downward regulation range')
+    plt.fill_between(range(T), P_bid, P_bid + R_bid, color='#397FC7', alpha=0.2, label=r'$R^{dn}$')
 
     # Plot upward regulation (P_bid - R_bid) with fill_between
-    plt.fill_between(range(T), P_bid, P_bid - R_bid, color='#040676', alpha=0.2, label='Upward regulation range')
+    plt.fill_between(range(T), P_bid, P_bid - R_bid, color='#040676', alpha=0.2, label=r'$R^{up}$')
 
     # Plot downward regulation (P_bid + R_bid) as a line with markers
-    plt.plot(range(T), P_bid + R_bid, marker='+', color='#397FC7', alpha=0.7, label='Downward power bound')
+    plt.plot(range(T), P_bid + R_bid, marker='+', color='#397FC7', alpha=0.7, label=r'$P+R$')
 
     # Plot upward regulation (P_bid - R_bid) as a line with markers
-    plt.plot(range(T), P_bid - R_bid, marker='o', color='#040676', alpha=0.7, label='Upward power bound')
+    plt.plot(range(T), P_bid - R_bid, marker='o', color='#040676', alpha=0.7, label=r'$P-R$')
 
 
     # First, plot energy bids (bar chart, at the bottom)
-    plt.bar(range(T), P_bid, width=0.8, color='#F1B656', alpha=1, label='Energy bids')
+    plt.bar(range(T), P_bid, width=0.8, color='#F1B656', alpha=1, label='P')
     # Horizontal axis line at y=0
     ax = plt.gca()
     ax.axhline(0, color='gray', linewidth=1, linestyle='--')
@@ -126,14 +136,29 @@ def bidding_res_plot(mode=0):
     
     plt.xlabel('Time period (1h)')
     plt.ylabel('Bids Capacity (kW)')
+    plt.legend(fontsize=10)
     ax.legend()
-
+    
     if mode == 1:
         plt.tight_layout()
-        plt.savefig("../output/bidding_resA.pdf")
+        plt.savefig(f"../output/bidding_res_{k}.pdf")
 
     plt.show()
-bidding_res_plot(1)
+    # ====cost calculation and print=======
+    buy_from_grid = sum(P_bid[t] * cpm.pr_e_rt[t] for t in range(T))
+    conp = sum(((deg[n,t]+dd[n,t]+du[n,t]) * la[n,t]) for n in range(cpm.N) for t in range(T))
+    # ev_charging_fee = 0.1 *quicksum(pi_o[ome]*(P_ch[ome,n,t].x - P_dis[ome,n,t].x )
+        #                                           for ome in range(2,4) for n in range(N) for t in range(T))
+    fre_income = sum(R_bid[t] * cpm.pr_fre[t] for t in range(T))
+    Cost_with_grid = buy_from_grid -fre_income+conp
+    print('=========fre_reg model================')
+    print(f'总成本={Cost_with_grid}($)')
+    print(f'充电成本={buy_from_grid}($)')
+    print(f'补贴成本={conp}($)')
+        # print(f'充电收益={ev_charging_fee}($)') 
+    print(f'调频收益={fre_income}($)')
+bidding_res_plot(0,1)
+# bidding_res_plot(1,loc='../output/bidding_trajectories2.npz')
 # %% 3 soc
 def EV_soc_plot(n,mode=0):
     """
@@ -192,5 +217,45 @@ def EV_soc_plot(n,mode=0):
     if mode == 1:
         plt.tight_layout()
         plt.savefig(f"../output/soc{n}.pdf")
-EV_soc_plot(60,1)
+
+# EV_soc_plot(15,1)
+# EV_soc_plot(30,1)
+EV_soc_plot(43,1)
+EV_soc_plot(64,1)
+# for i in range(60,80):
+#     EV_soc_plot(i)
+    # EV_soc_plot(74,1)
+
 # %%
+def flex_price_plot(cpm):
+        # Load pre-saved trajectories
+        data = np.load("../output/output_trajectories.npz")
+        la = data['la_trajectory']
+        x = np.arange(cpm.N)
+        y = np.arange(cpm.T)
+        X, Y = np.meshgrid(x, y)
+        fig = plt.figure(figsize = (12, 6))
+        ax = fig.add_subplot(111, projection='3d')
+        # fig= plt.subplots(figsize=(6, 3))
+        # ax = Axes3D(fig,auto_add_to_figure=False)
+        # fig.add_axes(ax)
+        ax.plot_surface(X, Y, Z.T, cmap='plasma')  # 注意需要转置 Z
+        # ax1.legend(loc=2)
+        new_labels = list(range(12, 24)) + list(range(0, 12)) 
+        ax.set_yticks(y)
+        ax.set_yticklabels(new_labels)
+        x_major_locator = plt.MultipleLocator(2)
+        ax.yaxis.set_major_locator(x_major_locator)
+        ax.set_zlabel('flexibility price($/kWh)')
+        ax.set_box_aspect(aspect=None, zoom=0.9)
+        ax.view_init(elev=10, azim=23)
+        ax.zaxis.labelpad=3.8
+        ax.set_xlabel('EV users')
+        ax.set_ylabel('Time period (1h)')
+        plt.tight_layout()
+        plt.savefig(
+            "../output/flex_price.pdf",
+            # dpi=600,
+            bbox_inches='tight',
+            )
+    

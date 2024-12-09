@@ -1,15 +1,17 @@
 # %% ===== Imports =====
 import EVA_constantParam as cpm
 import numpy as np
+from scipy.io import savemat
+import matlab.engine
+import time
 
 # matrix
-# Create dynamics in compact form
-def power_dispatch_plp(t_cur):
+# Create power dispatch problem in compact form
+def power_dispatch_matrices(t_cur):
     """
     Prepare and save parametric linear programming (PLP) data for power dispatch.
 
     Parameters:
-    - self: Object containing system parameters and data.
     - t_cur: Current time step (integer).
 
     Outputs:
@@ -21,13 +23,11 @@ def power_dispatch_plp(t_cur):
     eta_c, eta_d= cpm.eta_c, cpm.eta_d   # Charging and discharging efficiencies
     # Load pre-saved trajectories
     bidding_data = np.load("../output/bidding_trajectories.npz")
+    data = np.load("../output/EV_power_trajectories.npz")
+    flex_data = np.load("../output/output_trajectories.npz")
     P_bid = bidding_data['P_bid_trajectory']
     R_bid = bidding_data['R_bid_trajectory']
-
-    data = np.load("../output/EV_power_trajectories.npz")
     p0 = data['p0_trajectory']
-
-    flex_data = np.load("../output/output_trajectories.npz")
     la=flex_data['la_trajectory']
     deg =flex_data['deg_trajectory']
     du= flex_data['du_trajectory']
@@ -37,29 +37,29 @@ def power_dispatch_plp(t_cur):
     I = np.eye(N)                       # Identity matrix of size NxN
     aaa = np.ones((1, 1))               # Scalar (used for Feq construction)
 
-    # ===== Equality Constraints =====
-    # Aeq: Matrix for equality constraints
+    # ===== Equality Constraints  Aeq*x=Feq*theta+beq =====
+    # Aeq: create block Matrix for equality constraints
     Aeq = np.block([
-        [e, -e, e * 0],                 # Sum of charging and discharging equals demand
-        [I, -I, I]                     # Individual energy balance constraints
+        [e, -e],                 # Sum of charging and discharging equals demand
+        # [I, -I, I]                     # Individual energy balance constraints
     ])
     
     # Feq: Coefficients for parametric equality constraints
-    Feq = np.hstack((aaa * R_bid[t_cur], e * 0)).T
+    Feq = np.hstack((aaa * R_bid[t_cur])).T
 
     # beq: Right-hand side of equality constraints
-    beq = np.hstack((
-        aaa * P_bid[t_cur],        # Total power demand at time t_cur
-        p0[:, t_cur].reshape(-1, 1).T  # Initial state for each agent
-    )).reshape(-1, 1)
+    # beq = np.hstack((
+    #     aaa * P_bid[t_cur],        # Total power demand at time t_cur
+    #     p0[:, t_cur].reshape(-1, 1).T  # Initial state for each agent
+    # )).reshape(-1, 1)
 
     # ===== Inequality Constraints =====
     # A: Matrix for inequality constraints
     A = np.block([
-        [-I, I * 0, I * 0],             # Charging power bounds
-        [I * 0, -I, I * 0],            # Discharging power bounds
-        [I * 0, I * 0, I],             # Upward flexibility bounds
-        [I * 0, I * 0, -I]             # Downward flexibility bounds
+        [-I , I*0],             # Charging power bounds
+        [I*0, -I ],            # Discharging power bounds
+        [I, I*0],             # Upward flexibility bounds
+        [I*0, I,]             # Downward flexibility bounds
     ])
     
     # b: Right-hand side of inequality constraints
@@ -70,15 +70,14 @@ def power_dispatch_plp(t_cur):
         dd[:, t_cur].reshape(-1, 1).T   # Downward reserve constraints
     )).reshape(-1, 1)
 
-    # ===== Terminal Constraints =====
+    # ===== parametric Constraints =====
     At = np.array([[1], [-1]])          # Terminal constraint coefficients
     bt = np.array([[1], [1]])           # Terminal bounds
 
     # ===== Cost Function =====
     # Linear cost coefficients
-    c = np.hstack((
-        e * 0,                          # No cost for charging
-        la[:, t_cur].reshape(-1, 1).T / eta_d,  # Cost for discharging
+    c = np.hstack((                        # No cost for charging
+        la[:, t_cur].reshape(-1, 1).T ,    # Cost for discharging
         la[:, t_cur].reshape(-1, 1).T           # Cost for flexibility
     )).reshape(-1, 1)
 
@@ -87,16 +86,32 @@ def power_dispatch_plp(t_cur):
         'A': A,
         'b': b,
         'Aeq': Aeq,
-        'beq': beq,
         'Feq': Feq,
         'At': At,
         'bt': bt,
         'c': c,
     }
-    # savemat(f'./crs/plp_{t_cur}.mat', plp)
+    savemat(f'../output/crs/plp_{t_cur}.mat', plp)
     # critical_region_affine(A, b, Aeq, beq, c, F, param_range)
     return plp
 
-
-power_dispatch_plp(10)
+# 利用MPT3求解
+def plp_run(t_cur):
+    eng = matlab.engine.start_matlab()
+    st = time.time()
+    num_crs = int(eng.calc_crs(t_cur))
+    et = time.time()
+    print('==========')
+    print(f'{t_cur} solving for {et-st} seconds.')
+    num_crs = int(eng.calc_crs(t_cur))
+    print(f'agent {t_cur} # of CR:', num_crs)
+    # CR plot
     
+
+
+    
+# %%
+power_dispatch_matrices(10)
+print('ok!')
+
+# %%
